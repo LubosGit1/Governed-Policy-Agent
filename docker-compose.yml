@@ -15,6 +15,17 @@ services:
       timeout: 3s
       retries: 10
 
+  seed:
+    build:
+      context: .
+      target: builder
+    command: ["npm", "run", "db:seed"]
+    environment:
+      DATABASE_URL: postgresql://policy:policy@db:5432/policy_assistant
+    depends_on:
+      db:
+        condition: service_healthy
+
   app:
     build: .
     environment:
@@ -27,8 +38,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      db:
-        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

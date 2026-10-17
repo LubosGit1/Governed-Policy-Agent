@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:seed": "tsx scripts/seed-policy.ts"
   },
   "dependencies": {
     "next": "^16.4.2",
@@ -29,6 +30,7 @@
     "eslint-plugin-react-hooks": "^7.1.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
+    "tsx": "^4.20.6",
     "vitest": "^5.0.5"
   }
 }
