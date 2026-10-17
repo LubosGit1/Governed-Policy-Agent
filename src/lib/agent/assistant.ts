@@ -46,7 +46,8 @@ export async function answerPolicyQuestion(
 ): Promise<AssistantResponse> {
   const start = (dependencies.now ?? Date.now)();
   const requestId = (dependencies.id ?? randomUUID)();
-  const redactedInput = redactPii(question).redactedText;
+  const redaction = redactPii(question);
+  const redactedInput = redaction.redactedText;
   const retrievedChunks: PolicySearchResult[] = [];
   let toolCalls: string[] = [];
   let model = typeof dependencies.provider === "function"
@@ -72,7 +73,7 @@ export async function answerPolicyQuestion(
       };
     } else {
       toolCalls = ["search_policy_docs"];
-      retrievedChunks.push(...await searchPolicyDocs(dependencies.db, redactedInput));
+      retrievedChunks.push(...await searchPolicyDocs(dependencies.db, redaction.searchableText));
 
       if (retrievedChunks.length === 0) {
         refused = true;

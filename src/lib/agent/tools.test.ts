@@ -40,13 +40,13 @@ describe("ToolExecutor", () => {
 
     await expect(executor.execute("create_handoff_ticket", {
       approved: false,
-      question: "Please call me at 777 123 456.",
+      question: "Please call me at +420 000 000 000.",
     })).rejects.toThrow();
     expect(createHandoff).not.toHaveBeenCalled();
 
     await expect(executor.execute("create_handoff_ticket", {
       approved: true,
-      question: "Please call me at 777 123 456.",
+      question: "Please call me at +420 000 000 000.",
     })).resolves.toEqual({ ticketId: "ticket-123" });
     expect(createHandoff).toHaveBeenCalledWith("Please call me at [REDACTED_PHONE].");
   });

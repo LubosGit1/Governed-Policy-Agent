@@ -18,6 +18,8 @@ describe("searchPolicyDocs", () => {
       expect.stringContaining("websearch_to_tsquery"),
       ["burst pipe", 10],
     );
+    expect(query.mock.calls[0][0]).toContain("matched_count >= 2");
+    expect(query.mock.calls[0][0]).toContain("'policy', 'insur', 'cover'");
   });
 
   it("does not query for blank input and defaults invalid limits", async () => {

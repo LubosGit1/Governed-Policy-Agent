@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/api/request";
 import { checkRateLimit, hasSameOrigin, ADMIN_COOKIE_NAME, adminSecretMatches, isAdminSecretConfigured } from "@/lib/api/security";
 import { getDbPool } from "@/lib/db";
 
@@ -33,13 +34,13 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  const body = await readJsonBody(request, 2048);
+  if (!body.ok) {
+    return NextResponse.json({
+      error: body.status === 413 ? "Request body is too large." : "Request body must be valid JSON.",
+    }, { status: body.status });
   }
-  const parsed = loginSchema.safeParse(body);
+  const parsed = loginSchema.safeParse(body.value);
   if (!parsed.success || !adminSecretMatches(parsed.data.key)) {
     return NextResponse.json({ error: "Invalid admin key." }, { status: 401 });
   }
@@ -59,6 +60,19 @@ export async function DELETE(request: Request) {
   if (!hasSameOrigin(request)) {
     return NextResponse.json({ error: "Requests must come from this application." }, {
       status: 403,
+    });
+  }
+  try {
+    const limit = await checkRateLimit(getDbPool(), request, "admin-logout");
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many requests." }, {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds) },
+      });
+    }
+  } catch {
+    return NextResponse.json({ error: "Admin service is temporarily unavailable." }, {
+      status: 503,
     });
   }
 

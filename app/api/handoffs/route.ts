@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { writeAuditRecord } from "@/lib/agent/audit";
 import { ToolExecutor } from "@/lib/agent/tools";
+import { readJsonBody } from "@/lib/api/request";
 import { checkRateLimit, hasSameOrigin } from "@/lib/api/security";
 import { getDbPool } from "@/lib/db";
 import { redactPii } from "@/lib/privacy/redact-pii";
@@ -37,14 +38,14 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  const body = await readJsonBody(request);
+  if (!body.ok) {
+    return NextResponse.json({
+      error: body.status === 413 ? "Request body is too large." : "Request body must be valid JSON.",
+    }, { status: body.status });
   }
 
-  const parsed = handoffRequestSchema.safeParse(body);
+  const parsed = handoffRequestSchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json({ error: "A clear human approval is required to create a ticket." }, {
       status: 400,

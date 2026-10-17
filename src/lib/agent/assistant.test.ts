@@ -44,7 +44,7 @@ describe("answerPolicyQuestion", () => {
       },
     );
 
-    expect(dependencies.query.mock.calls[0][1]?.[0]).toContain("[REDACTED_EMAIL]");
+    expect(dependencies.query.mock.calls[0][1]?.[0]).not.toContain("person@example.test");
     expect(dependencies.provider.answer).toHaveBeenCalledWith(
       expect.stringContaining("[REDACTED_EMAIL]"),
       [chunk],

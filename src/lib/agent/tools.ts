@@ -68,7 +68,7 @@ export class ToolExecutor {
         const args = searchSchema.parse(input);
         return searchPolicyDocs(
           this.dependencies.db,
-          redactPii(args.query).redactedText,
+          redactPii(args.query).searchableText,
           args.limit,
         );
       }

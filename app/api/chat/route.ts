@@ -3,6 +3,7 @@ import { z } from "zod";
 import { answerPolicyQuestion } from "@/lib/agent/assistant";
 import { writeAuditRecord } from "@/lib/agent/audit";
 import { createPolicyProvider } from "@/lib/agent/provider";
+import { readJsonBody } from "@/lib/api/request";
 import { checkRateLimit, hasSameOrigin } from "@/lib/api/security";
 import { getDbPool } from "@/lib/db";
 
@@ -35,18 +36,14 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: unknown;
-  try {
-    const rawBody = await request.text();
-    if (Buffer.byteLength(rawBody, "utf8") > 16_384) {
-      return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
-    }
-    body = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  const body = await readJsonBody(request);
+  if (!body.ok) {
+    return NextResponse.json({
+      error: body.status === 413 ? "Request body is too large." : "Request body must be valid JSON.",
+    }, { status: body.status });
   }
 
-  const parsed = requestSchema.safeParse(body);
+  const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json({ error: "Provide one question of at most 2,000 characters." }, {
       status: 400,

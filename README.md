@@ -1,59 +1,125 @@
 # Policy Assistant
 
-A governed AI assistant for fictional Nordlight Insurance employees to ask questions about synthetic home-insurance terms and claims.
+A governed AI assistant for fictional Nordlight Insurance employees to ask questions about synthetic home-insurance terms and claims. It answers from approved Markdown summaries, validates source citations, redacts common PII, and offers a human-review handoff when evidence is insufficient.
 
-> This project is under active development. The chat API and core safety services are implemented; the chat UI and remaining governance surfaces are still in progress.
+> Portfolio prototype only. It does not make claim decisions and must not be used with real customer or insurer data.
 
-## Knowledge base
+## Screenshots
 
-The repository includes nine fictional Markdown policy summaries in `knowledge-base/`. On startup, the Compose `seed` service chunks them into stable IDs such as `water-damage#001` and upserts them into PostgreSQL. PostgreSQL full-text search ranks matching chunks; it is not a semantic/vector search. All policy terms and amounts are synthetic and are not suitable for real coverage decisions.
+The screenshots show the mock-provider prototype with synthetic questions and audit rows.
 
-For an existing local PostgreSQL instance, seed with:
+![Chat answer with a verified policy source](./docs/screenshots/chat.png)
 
-```bash
-DATABASE_URL=postgresql://policy:policy@localhost:5432/policy_assistant npm run db:seed
-```
-
-The default `LLM_PROVIDER=mock` needs no API key. To use Claude, configure `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, and optionally `ANTHROPIC_MODEL` in `.env`, then restart Compose. Claude API usage is billed separately from a Claude Max subscription.
+![Admin metrics and redacted audit view](./docs/screenshots/admin.png)
 
 ## Quick start
 
-Requirements: Docker Compose.
+Requirements: Docker Compose and ports `3000` and `5432` available.
 
 ```bash
 docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The assistant uses the mock provider by default and does not require an API key. To enable admin access, copy `.env.example` to `.env`, replace `ADMIN_API_KEY` and `RATE_LIMIT_HASH_SECRET` with long random values, and restart Compose. For local development, run `npm install && npm run dev`.
+Compose starts PostgreSQL, seeds the synthetic policy documents, then starts Next.js. Open [http://localhost:3000](http://localhost:3000). The mock provider is the default and requires no API key.
+
+To enable the admin view, copy `.env.example` to `.env`, replace `ADMIN_API_KEY` and `RATE_LIMIT_HASH_SECRET` with long random values, then start Compose. Never commit `.env`.
+
+## Using Claude
+
+Claude API access is optional and billed separately from a Claude Max subscription. Set these values in `.env` and restart the app:
+
+```dotenv
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your-own-api-key
+ANTHROPIC_MODEL=claude-haiku-4-5-20251001
+```
+
+The provider API key is only read by the server. Automated tests and CI force the deterministic `mock` provider and do not need credentials.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Employee --> Web[Next.js App Router]
-    Web --> Assistant[Governed assistant service]
-    Assistant --> Provider[Provider interface]
-    Provider --> Mock[Deterministic mock]
-    Provider --> Claude[Optional Anthropic Claude]
-    Assistant --> DB[(PostgreSQL\npolicy search + audit)]
-    Assistant --> Tools[Allow-listed tools]
-    Tools --> Approval[Human approval for handoff - planned]
+    Employee --> UI[Next.js chat and admin UI]
+    UI --> API[Same-origin, rate-limited API]
+    API --> Guard[PII redaction and guardrails]
+    Guard --> Retrieval[PostgreSQL full-text retrieval]
+    Retrieval --> Chunks[Ranked chunks with stable source IDs]
+    Chunks --> Service[Policy assistant service]
+    Service --> Mock[Deterministic mock provider]
+    Service --> Claude[Optional Anthropic provider]
+    Service --> CitationCheck[Retrieved-source citation check]
+    Service --> Audit[(Redacted audit records)]
+    UI --> Approval[Explicit human approval]
+    Approval --> Handoff[Handoff ticket + audit transaction]
+    API --> Tools[Zod-validated allow-listed tools]
+    Tools --> Audit
+    Admin[Admin key session] --> Metrics[Protected metrics and CSV export]
+    Metrics --> Audit
 ```
 
-## Development
+### Knowledge base
+
+`knowledge-base/` contains nine fictional policy summaries. At startup, the Compose `seed` service chunks and upserts them into PostgreSQL with stable IDs such as `water-damage#001`. Search uses PostgreSQL English full-text ranking; it is lexical, not semantic/vector search. Policy schedules, endorsements and claim records are not available to the assistant.
+
+## Tests and evaluation
+
+For local tests, keep the Compose PostgreSQL service running. Install the Playwright browser once:
 
 ```bash
+npx playwright install chromium
 npm test
+npm run eval
+```
+
+`npm test` runs Vitest unit tests and Playwright API/browser tests. The API and evaluation tests use the seeded PostgreSQL data. If you do not already have `.env`, copy `.env.example` to `.env` first; the evaluation runner loads its Compose-mapped database URL automatically. `npm run eval` writes JSON and Markdown reports under `eval/reports/` and fails below defined correctness, citation, refusal, injection-resistance and PII-leakage thresholds or after a material regression from the accepted baseline.
+
+The committed `eval/baseline.json` is intentionally uninitialized until a successful database-backed report has been reviewed. After review, copy the accepted metric scores into it; subsequent local runs compare against the previous report and CI compares against the committed accepted baseline.
+
+Useful checks:
+
+```bash
+npm run test:unit
+npm run test:api
+npm run test:e2e
 npm run lint
 npm run type-check
 npm run build
 ```
 
-## Implementation status
+GitHub Actions runs lint, type-check, build, unit/API/E2E tests, and the mock-provider evaluation gate against PostgreSQL. Playwright and evaluation artifacts are uploaded by CI.
 
-- Implemented: synthetic policy documents, PostgreSQL chunk schema and seeding, ranked full-text retrieval, PII redaction, mock/Claude provider adapters, grounded assistant API, citation validation, audit persistence, injection refusal, validated allow-listed tools, approval-gated handoff, chat UI, and admin metrics/CSV.
-- Planned: evaluation suite, API/E2E/security tests, governance docs, and CI.
+## API overview
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/chat` | Redacted, cited policy answer or refusal |
+| `POST` | `/api/tools/estimate-claim-payout` | Deterministic illustrative payout calculation |
+| `POST` | `/api/handoffs` | Create a ticket after explicit UI approval |
+| `POST` / `DELETE` | `/api/admin/session` | Admin-key login and logout |
+| `GET` | `/api/admin/data` | Protected metrics and recent audit entries |
+| `GET` | `/api/admin/export` | Protected, formula-safe CSV export |
+
+An importable Postman collection is available at [`postman/Policy-Assistant.postman_collection.json`](./postman/Policy-Assistant.postman_collection.json).
+
+## Security, governance, and design
+
+- [Security model and OWASP mappings](./docs/SECURITY.md)
+- [Data handling and oversight](./docs/GOVERNANCE.md)
+- [Architecture decisions](./docs/DECISIONS.md)
+- `INTERVIEW_NOTES.md` is deliberately ignored by Git; it is a local plain-language guide to the design and demo.
+
+## Limitations and next steps
+
+- The documents are short synthetic summaries, not full contract wording; a citation does not establish coverage.
+- Lexical retrieval can miss paraphrases. Low/absent evidence results in escalation rather than a coverage guess.
+- PII detection is pattern-based and incomplete. Never enter real personal, payment, medical, or claim-identifying information.
+- Chat has no employee identity/SSO. Same-origin checks and rate limits are not authentication.
+- The demo uses a shared admin key and has no automated audit retention/deletion. Production needs SSO, roles, approved retention, authenticated approvals, monitoring, TLS, and proxy configuration.
+- The evaluation set is a regression check, not proof of production accuracy.
+
+Next steps for a production design would include reviewed/versioned policy data, authenticated employees, identity-bound approvals, retention and deletion workflows, semantic retrieval evaluation, stronger privacy detection, and independent security review.
 
 ## How this was built
 
-This portfolio project was built with an AI coding agent under the author's direction and review. The author is responsible for reviewing the implementation and understanding its design and limitations before presenting it.
+This project was built with an AI coding agent under the author's direction and review. The author is responsible for reviewing the implementation and understanding its major design decisions and limitations before presenting it.

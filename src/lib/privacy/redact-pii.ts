@@ -2,6 +2,7 @@ export type PiiType = "email" | "phone" | "iban" | "czech-birth-number";
 
 export interface RedactionResult {
   redactedText: string;
+  searchableText: string;
   detectedTypes: PiiType[];
 }
 
@@ -44,5 +45,21 @@ export function redactPii(input: string): RedactionResult {
     },
   );
 
-  return { redactedText, detectedTypes: [...detectedTypes] };
+  return {
+    redactedText,
+    searchableText: redactedText
+      .replace(
+        /\b(?:please\s+)?(?:call|contact|write|reach|email)(?:\s+me)?(?:\s+(?:at|to))?\s+\[REDACTED_[A-Z_]+\]/gi,
+        " ",
+      )
+      .replace(
+        /\b(?:my\s+)?(?:email|phone|number|iban|birth(?:\s+number)?)\s*(?:is\s*)?:?\s*\[REDACTED_[A-Z_]+\]/gi,
+        " ",
+      )
+      .replace(/\bpay\s+account\s+\[REDACTED_[A-Z_]+\]/gi, " ")
+      .replace(/\[REDACTED_[A-Z_]+\]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+    detectedTypes: [...detectedTypes],
+  };
 }

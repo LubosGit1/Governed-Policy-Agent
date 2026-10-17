@@ -1,5 +1,6 @@
 node_modules/
 .next/
+next-env.d.ts
 out/
 coverage/
 playwright-report/
@@ -10,3 +11,4 @@ test-results/
 *.log
 *.tsbuildinfo
 INTERVIEW_NOTES.md
+eval/reports/

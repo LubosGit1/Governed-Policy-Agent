@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { writeAuditRecord } from "@/lib/agent/audit";
 import { ToolExecutor, claimPayoutSchema } from "@/lib/agent/tools";
+import { readJsonBody } from "@/lib/api/request";
 import { checkRateLimit, hasSameOrigin } from "@/lib/api/security";
 import { getDbPool } from "@/lib/db";
 import { redactPii } from "@/lib/privacy/redact-pii";
@@ -31,14 +32,14 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  const body = await readJsonBody(request);
+  if (!body.ok) {
+    return NextResponse.json({
+      error: body.status === 413 ? "Request body is too large." : "Request body must be valid JSON.",
+    }, { status: body.status });
   }
 
-  const parsed = claimPayoutSchema.safeParse(body);
+  const parsed = claimPayoutSchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid estimate arguments." }, { status: 400 });
   }

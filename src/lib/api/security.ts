@@ -12,8 +12,8 @@ function positiveIntegerSetting(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
   const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 1) {
-    throw new Error(`${name} must be a positive integer.`);
+  if (!Number.isSafeInteger(value) || value < 1 || value > 2_000_000_000) {
+    throw new Error(`${name} must be a positive integer no greater than 2,000,000,000.`);
   }
   return value;
 }
@@ -56,13 +56,13 @@ export async function checkRateLimit(
        request_count = CASE
          WHEN rate_limit_buckets.window_started_at + ($2 * INTERVAL '1 millisecond') <= now()
          THEN 1
-         ELSE rate_limit_buckets.request_count + 1
+         ELSE LEAST(rate_limit_buckets.request_count + 1, $3)
        END
      RETURNING request_count AS "requestCount",
        EXTRACT(EPOCH FROM (
          window_started_at + ($2 * INTERVAL '1 millisecond') - now()
        )) AS "resetAt"`,
-    [keyHash, windowMs],
+    [keyHash, windowMs, maxRequests + 1],
   );
 
   const state = result.rows[0];
