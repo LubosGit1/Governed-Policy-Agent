@@ -1,8 +1,14 @@
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL must be set before using PostgreSQL.");
-}
+let pool: Pool | undefined;
 
-export const db = new Pool({ connectionString });
+export function getDbPool(): Pool {
+  if (pool) return pool;
+
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL must be set before using PostgreSQL.");
+  }
+  pool = new Pool({ connectionString });
+  return pool;
+}
