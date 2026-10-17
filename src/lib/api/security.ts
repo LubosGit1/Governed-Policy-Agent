@@ -114,7 +114,10 @@ export function hasSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return false;
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    const requestUrl = new URL(request.url);
+    const host = request.headers.get("host");
+    if (!host) return false;
+    return new URL(origin).origin === `${requestUrl.protocol}//${new URL(`${requestUrl.protocol}//${host}`).host}`;
   } catch {
     return false;
   }

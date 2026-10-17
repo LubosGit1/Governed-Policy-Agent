@@ -29,10 +29,19 @@ describe("API security helpers", () => {
 
   it("accepts only an exact same-origin request", () => {
     expect(hasSameOrigin(new Request("https://policy.example/api/chat", {
-      headers: { origin: "https://policy.example" },
+      headers: { host: "policy.example", origin: "https://policy.example" },
+    }))).toBe(true);
+    expect(hasSameOrigin(new Request("http://internal-app:3000/api/admin/session", {
+      headers: {
+        host: "localhost:3000",
+        origin: "http://localhost:3000",
+      },
     }))).toBe(true);
     expect(hasSameOrigin(new Request("https://policy.example/api/chat", {
-      headers: { origin: "https://other.example" },
+      headers: { host: "policy.example", origin: "https://other.example" },
+    }))).toBe(false);
+    expect(hasSameOrigin(new Request("https://policy.example/api/chat", {
+      headers: { host: "policy.example", origin: "http://policy.example" },
     }))).toBe(false);
     expect(hasSameOrigin(new Request("https://policy.example/api/chat"))).toBe(false);
   });
