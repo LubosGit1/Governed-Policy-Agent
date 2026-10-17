@@ -9,7 +9,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <header className="site-header">
+          <a href="/">Nordlight Insurance</a>
+          <a href="/admin">Admin</a>
+        </header>
+        {children}
+      </body>
     </html>
   );
 }

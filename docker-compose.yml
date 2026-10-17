@@ -33,9 +33,10 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-local-admin-change-me}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-30}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_HASH_SECRET: ${RATE_LIMIT_HASH_SECRET:-local-dev-only-rate-limit-key}
     ports:
       - "3000:3000"
     depends_on:

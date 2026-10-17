@@ -16,11 +16,12 @@ export interface AuditRecord {
   inputTokens: number;
   outputTokens: number;
   refused: boolean;
+  escalationOffered: boolean;
 }
 
 export interface AssistantDependencies {
   db: Queryable;
-  provider: PolicyProvider;
+  provider: PolicyProvider | (() => PolicyProvider);
   audit: (record: AuditRecord) => Promise<void>;
   now?: () => number;
   id?: () => string;
@@ -48,15 +49,19 @@ export async function answerPolicyQuestion(
   const redactedInput = redactPii(question).redactedText;
   const retrievedChunks: PolicySearchResult[] = [];
   let toolCalls: string[] = [];
-  let model = dependencies.provider.modelName;
+  let model = typeof dependencies.provider === "function"
+    ? process.env.LLM_PROVIDER ?? "mock"
+    : dependencies.provider.modelName;
   let inputTokens = 0;
   let outputTokens = 0;
   let refused = false;
+  let escalationOffered = false;
   let response: AssistantResponse | undefined;
 
   try {
     if (isPromptInjection(redactedInput)) {
       refused = true;
+      escalationOffered = false;
       model = "guardrail";
       response = {
         requestId,
@@ -66,11 +71,12 @@ export async function answerPolicyQuestion(
         escalationOffered: false,
       };
     } else {
-      retrievedChunks.push(...await searchPolicyDocs(dependencies.db, redactedInput));
       toolCalls = ["search_policy_docs"];
+      retrievedChunks.push(...await searchPolicyDocs(dependencies.db, redactedInput));
 
       if (retrievedChunks.length === 0) {
         refused = true;
+        escalationOffered = true;
         response = {
           requestId,
           answer: noEvidenceAnswer,
@@ -79,12 +85,17 @@ export async function answerPolicyQuestion(
           escalationOffered: true,
         };
       } else {
-        const generated = await dependencies.provider.answer(redactedInput, retrievedChunks);
+        const provider = typeof dependencies.provider === "function"
+          ? dependencies.provider()
+          : dependencies.provider;
+        model = provider.modelName;
+        const generated = await provider.answer(redactedInput, retrievedChunks);
         inputTokens = generated.inputTokens;
         outputTokens = generated.outputTokens;
         const checked = validateCitations(generated.citations, retrievedChunks);
         if (!checked.valid || (generated.citations.length === 0 && !generated.refused)) {
           refused = true;
+          escalationOffered = true;
           response = {
             requestId,
             answer: noEvidenceAnswer,
@@ -94,6 +105,7 @@ export async function answerPolicyQuestion(
           };
         } else {
           refused = generated.refused;
+          escalationOffered = generated.refused;
           response = {
             requestId,
             answer: generated.answer,
@@ -119,6 +131,7 @@ export async function answerPolicyQuestion(
       inputTokens,
       outputTokens,
       refused,
+      escalationOffered,
     });
   }
 

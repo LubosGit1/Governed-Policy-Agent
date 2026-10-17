@@ -24,7 +24,7 @@ Requirements: Docker Compose.
 docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The initial scaffold does not require an API key. For local development, copy `.env.example` to `.env` and run `npm install && npm run dev`.
+Open [http://localhost:3000](http://localhost:3000). The assistant uses the mock provider by default and does not require an API key. To enable admin access, copy `.env.example` to `.env`, replace `ADMIN_API_KEY` and `RATE_LIMIT_HASH_SECRET` with long random values, and restart Compose. For local development, run `npm install && npm run dev`.
 
 ## Architecture
 
@@ -51,8 +51,8 @@ npm run build
 
 ## Implementation status
 
-- Implemented: synthetic policy documents, PostgreSQL chunk schema and seeding, ranked full-text retrieval, PII redaction, mock/Claude provider adapters, grounded assistant API, citation validation, audit persistence, injection refusal and validated allow-listed tools.
-- Planned: interactive chat and approval UI, persisted handoff tickets, protected admin/CSV view, evaluation suite, API/E2E/security tests, governance docs, and CI.
+- Implemented: synthetic policy documents, PostgreSQL chunk schema and seeding, ranked full-text retrieval, PII redaction, mock/Claude provider adapters, grounded assistant API, citation validation, audit persistence, injection refusal, validated allow-listed tools, approval-gated handoff, chat UI, and admin metrics/CSV.
+- Planned: evaluation suite, API/E2E/security tests, governance docs, and CI.
 
 ## How this was built
 

@@ -23,8 +23,26 @@ CREATE TABLE IF NOT EXISTS assistant_audit_logs (
     input_tokens INTEGER NOT NULL CHECK (input_tokens >= 0),
     output_tokens INTEGER NOT NULL CHECK (output_tokens >= 0),
     refused BOOLEAN NOT NULL,
+    escalation_offered BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE assistant_audit_logs
+    ADD COLUMN IF NOT EXISTS escalation_offered BOOLEAN NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS assistant_audit_logs_created_at_idx
     ON assistant_audit_logs (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS handoff_tickets (
+    ticket_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    redacted_question TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'closed')),
+    approval_method TEXT NOT NULL CHECK (approval_method = 'explicit-ui'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+    key_hash TEXT PRIMARY KEY,
+    window_started_at TIMESTAMPTZ NOT NULL,
+    request_count INTEGER NOT NULL CHECK (request_count > 0)
+);

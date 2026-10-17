@@ -7,7 +7,7 @@ const searchSchema = z.object({
   limit: z.number().int().min(1).max(10).optional(),
 }).strict();
 
-const payoutSchema = z.object({
+export const claimPayoutSchema = z.object({
   coverageLimit: z.number().finite().nonnegative().max(1_000_000_000),
   deductible: z.number().finite().nonnegative().max(1_000_000_000),
   damageAmount: z.number().finite().nonnegative().max(1_000_000_000),
@@ -34,7 +34,7 @@ export interface ClaimPayout {
 }
 
 export function estimateClaimPayout(input: unknown): ClaimPayout {
-  const { coverageLimit, deductible, damageAmount } = payoutSchema.parse(input);
+  const { coverageLimit, deductible, damageAmount } = claimPayoutSchema.parse(input);
   const estimatedPayment = Math.min(
     Math.max(damageAmount - deductible, 0),
     coverageLimit,
