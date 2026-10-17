@@ -14,7 +14,7 @@ The screenshots show the mock-provider prototype with synthetic questions and au
 
 ## Quick start
 
-Requirements: Docker Compose and ports `3000` and `5432` available.
+Requirements: Docker Compose and ports `3000` and `5432` available. If host port `5432` is already in use, set `POSTGRES_PORT=5433` in `.env`; the app container continues to connect to PostgreSQL over Compose's private network.
 
 ```bash
 docker compose up --build
@@ -64,7 +64,7 @@ flowchart LR
 
 ## Tests and evaluation
 
-For local tests, keep the Compose PostgreSQL service running. Install the Playwright browser once:
+For local tests, keep the Compose PostgreSQL service running. If you changed `POSTGRES_PORT` and run tests or evaluation from your host, update the port in `DATABASE_URL` in `.env` to match (for example, use `localhost:5433`). Install the Playwright browser once:
 
 ```bash
 npx playwright install chromium
